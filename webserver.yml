@@ -43,5 +43,4 @@
       service:
         name: "{{ web_server }}"
         state: restarted
-      when: test_result.rc == 0
-hi
+      when: test_result.rc == 2
