@@ -1,0 +1,46 @@
+- name: Manage Web Server Configuration
+  hosts: all
+  become: yes
+  vars:
+    web_server: nginx  
+    repo_url: "https://github.com/MahadevMetre/ansible-server-config.git"
+    config_dir: "/etc/nginx/conf.d"  
+    backup_dir: "/etc/nginx/conf.d_backup"
+
+  tasks:
+    - name: Install Web Server
+      package:
+        name: "{{ web_server }}"
+        state: present
+
+    - name: Ensure Git is installed
+      package:
+        name: git
+        state: present
+
+    - name: Backup existing configuration
+      command: cp -r {{ config_dir }} {{ backup_dir }}
+      ignore_errors: yes
+
+    - name: Clone or Update Configuration Repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ config_dir }}"
+        version: main
+        force: yes
+
+    - name: Test Web Server Configuration
+      command: nginx -t
+      register: test_result
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Rollback on Failure
+      command: cp -r {{ backup_dir }} {{ config_dir }}
+      when: test_result.rc != 0
+
+    - name: Restart Web Server
+      service:
+        name: "{{ web_server }}"
+        state: restarted
+      when: test_result.rc == 0
